@@ -14,12 +14,12 @@ public class NotFullyPaidException extends RuntimeException {
 	}
 
 	public long getRemaining() {
-		return remaining;
+		return this.remaining;
 	}
 
 	@Override
 	public String getMessage() {
-		return message + remaining;
+		return this.message + this.remaining;
 	}
 
 }

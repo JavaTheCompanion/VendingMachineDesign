@@ -34,8 +34,13 @@ public class Inventory<T> {
 		this.inventory.put(item, count);
 	}
 
-	public final void clear() {
-		this.inventory.clear();
+	@Override
+	public String toString() {
+		final StringBuilder builder = new StringBuilder();
+		builder.append("Inventory [inventory=");
+		builder.append(this.inventory);
+		builder.append("]");
+		return builder.toString();
 	}
 
 }

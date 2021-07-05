@@ -33,7 +33,7 @@ public class DrinksVendingMachine implements VendingMachine {
 			this.currentItem = item;
 			return item.getPrice();
 		}
-		throw new SoldOutException("Oops !!!" + item + " Sold Out, Please buy another Drink...");
+		throw new SoldOutException("Oops !!! " + item + " Sold Out, Want to try another Drink?");
 	}
 
 	@Override
@@ -44,7 +44,7 @@ public class DrinksVendingMachine implements VendingMachine {
 
 	@Override
 	public List<Rupee> refund() {
-		final List<Rupee> changeList = this.getChange(this.currentBalance);
+		final List<Rupee> changeList = this.collectChangeAndUpdateInventory(this.currentBalance);
 		this.deductCashInventory(changeList);
 
 		this.currentBalance = 0;
@@ -55,18 +55,21 @@ public class DrinksVendingMachine implements VendingMachine {
 
 	@Override
 	public Bucket<Item, List<Rupee>> collectItemAndChange() {
-		final Item item = this.collectItem();
+		final Item item = this.collectItemAndUpdateInventory();
 		this.totalSales = this.totalSales + this.currentItem.getPrice();
 
-		final List<Rupee> changeList = this.collectChange();
+		final long changeAmount = this.currentBalance - this.currentItem.getPrice();
+		final List<Rupee> changeList = this.collectChangeAndUpdateInventory(changeAmount);
+
+		//this.printStats();
 
 		return new Bucket<>(item, changeList);
 	}
 
 	@Override
 	public void reset() {
-		this.cashInventory.clear();
-		this.itemInventory.clear();
+		this.cashInventory.reset();
+		this.itemInventory.reset();
 
 		this.totalSales = 0;
 
@@ -74,7 +77,7 @@ public class DrinksVendingMachine implements VendingMachine {
 		this.currentItem = null;
 	}
 
-	private Item collectItem() throws NotSufficientChangeException, NotFullyPaidException {
+	private Item collectItemAndUpdateInventory() throws NotSufficientChangeException, NotFullyPaidException {
 		if (this.isFullyPaid()) {
 			if (this.hasSufficientChange()) {
 				this.itemInventory.deductCount(this.currentItem);
@@ -84,13 +87,12 @@ public class DrinksVendingMachine implements VendingMachine {
 			}
 		} else {
 			final long remainingBalance = this.currentItem.getPrice() - currentBalance;
-			throw new NotFullyPaidException("You haven't paid teh full Amount. Remaining : ", remainingBalance);
+			throw new NotFullyPaidException("You haven't paid the full Amount. Remaining: ", remainingBalance);
 		}
 	}
 
-	public List<Rupee> collectChange() {
-		final long changeAmount = this.currentBalance - this.currentItem.getPrice();
-		final List<Rupee> changeList = this.getChange(changeAmount);
+	public List<Rupee> collectChangeAndUpdateInventory(final long changeAmount) {
+		final List<Rupee> changeList = this.selectChange(changeAmount);
 		this.deductCashInventory(changeList);
 
 		this.currentBalance = 0;
@@ -111,7 +113,7 @@ public class DrinksVendingMachine implements VendingMachine {
 		boolean hasChange = true;
 
 		try {
-			this.getChange(amount);
+			this.selectChange(amount);
 		} catch (final NotSufficientChangeException ex) {
 			hasChange = false;
 		}
@@ -119,31 +121,29 @@ public class DrinksVendingMachine implements VendingMachine {
 		return hasChange;
 	}
 
-	private List<Rupee> getChange(final long amount) throws NotSufficientChangeException {
+	private List<Rupee> selectChange(final long amount) throws NotSufficientChangeException {
 		final List<Rupee> changeList = new ArrayList<>();
 		long balance = amount;
 
-		if (balance > 0) {
-			while (balance > 0) {
-				if (balance >= Rupee.FIFTY.getValue() && this.cashInventory.hasItem(Rupee.FIFTY)) {
-					changeList.add(Rupee.FIFTY);
-					balance = balance - Rupee.FIFTY.getValue();
-					continue;
-				} else if (balance >= Rupee.TWENTY.getValue() && this.cashInventory.hasItem(Rupee.TWENTY)) {
-					changeList.add(Rupee.TWENTY);
-					balance = balance - Rupee.TWENTY.getValue();
-					continue;
-				} else if (balance >= Rupee.TEN.getValue() && this.cashInventory.hasItem(Rupee.TEN)) {
-					changeList.add(Rupee.TEN);
-					balance = balance - Rupee.TEN.getValue();
-					continue;
-				} else if (balance >= Rupee.FIVE.getValue() && this.cashInventory.hasItem(Rupee.FIVE)) {
-					changeList.add(Rupee.FIVE);
-					balance = balance - Rupee.FIVE.getValue();
-					continue;
-				} else {
-					throw new NotSufficientChangeException("NotSufficientChange, Please try another Drink...");
-				}
+		while (balance > 0) {
+			if (balance >= Rupee.FIFTY.getValue() && this.cashInventory.hasItem(Rupee.FIFTY)) {
+				changeList.add(Rupee.FIFTY);
+				balance = balance - Rupee.FIFTY.getValue();
+				continue;
+			} else if (balance >= Rupee.TWENTY.getValue() && this.cashInventory.hasItem(Rupee.TWENTY)) {
+				changeList.add(Rupee.TWENTY);
+				balance = balance - Rupee.TWENTY.getValue();
+				continue;
+			} else if (balance >= Rupee.TEN.getValue() && this.cashInventory.hasItem(Rupee.TEN)) {
+				changeList.add(Rupee.TEN);
+				balance = balance - Rupee.TEN.getValue();
+				continue;
+			} else if (balance >= Rupee.FIVE.getValue() && this.cashInventory.hasItem(Rupee.FIVE)) {
+				changeList.add(Rupee.FIVE);
+				balance = balance - Rupee.FIVE.getValue();
+				continue;
+			} else {
+				throw new NotSufficientChangeException("NotSufficientChange, Please try another Drink...");
 			}
 		}
 
